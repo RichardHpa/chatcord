@@ -25,7 +25,14 @@ io.on('connection', socket => {
     socket.on('disconnect', () => {
         // this will emit to every user
         io.emit('message', 'A user has left the chat');
-    })
+    });
+
+    // Listen for chatMessage
+    socket.on('chatMessage', (msg) => {
+        // console.log(msg);
+        io.emit('message', msg);
+    });
+
 
 });
 
