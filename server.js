@@ -5,7 +5,7 @@ const socketio = require('socket.io');
 
 const formatMessage = require('./utils/messages');
 
-const { userJoin, getCurrentUser } = require('./utils/users');
+const { userJoin, getCurrentUser, userLeave, getRoomUsers } = require('./utils/users');
 
 const app = express();
 const server = http.createServer(app);
@@ -31,19 +31,47 @@ io.on('connection', socket => {
 
         // Broadcasts when a user connects
         // This will emit to everyone except the user you connects
-        socket.to(user.room).broadcast.emit('message', formatMessage(botName, `${user.username} has joined the chat`));
+        socket.broadcast
+            .to(user.room)
+            .emit(
+                'message',
+                formatMessage(botName, `${user.username} has joined the chat`)
+            );
 
-        // Runs when a user disconnects
-        socket.on('disconnect', () => {
-            // this will emit to every user
-            io.emit('message', formatMessage(botName, `${user.username} has left the chat`));
-        });
+            // Send users and room Info
+            io.to(user.room).emit('roomusers', {
+                room: user.room,
+                users: getRoomUsers(user.room)
+            })
+
     });
 
     // Listen for chatMessage
     socket.on('chatMessage', (msg) => {
         // console.log(msg);
-        io.emit('message', formatMessage('USER',msg));
+
+        const user = getCurrentUser(socket.id);
+
+        io.to(user.room).emit('message', formatMessage(user.username, msg));
+    });
+
+    // Runs when a user disconnects
+    socket.on('disconnect', () => {
+        // this will emit to every user
+        const user = userLeave(socket.id);
+
+        if(user){
+            io.to(user.room).emit(
+                'message',
+                formatMessage(botName, `${user.username} has left the chat`)
+            );
+
+            // Send users and room Info
+            io.to(user.room).emit('roomusers', {
+                room: user.room,
+                users: getRoomUsers(user.room)
+            })
+        }
     });
 
 
